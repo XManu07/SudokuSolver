@@ -14,9 +14,14 @@ public:
 	std::string PuzzleVectorToString(const std::vector<int>& puzzle);
 	
 	bool IsValidPuzzle(const std::vector<int>& puzzle);
+
+	void InitializeStructure();
+
+	void DeleteStructure();
 	
 	bool Solve(const std::string& sudokuString);
 
 	std::vector<int> GetSolution();
+
 };
 

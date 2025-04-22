@@ -17,6 +17,15 @@ std::vector<int> SudokuSolver::PuzzleStringToVector(const std::string& sudokuStr
     return puzzle;
 }
 
+std::string SudokuSolver::PuzzleVectorToString(const std::vector<int>& puzzle)
+{
+    std::string result;
+    for (unsigned int i = 0; i < puzzle.size(); i++) {
+        result += std::to_string(puzzle[i]);
+    }
+    return result;
+}
+
 bool SudokuSolver::IsValidPuzzle(const std::vector<int>& puzzle)
 {
     if (puzzle.size() != 81)
@@ -77,6 +86,16 @@ bool SudokuSolver::IsValidPuzzle(const std::vector<int>& puzzle)
     return true;
 }
 
+void SudokuSolver::InitializeStructure()
+{
+    dlx.SetupSudokuStructure();
+}
+
+void SudokuSolver::DeleteStructure()
+{
+    dlx.DeleteSudokuStructure();
+}
+
 bool SudokuSolver::Solve(const std::string& sudokuString)
 {
     std::vector<int> sudokuVector = PuzzleStringToVector(sudokuString);
@@ -85,7 +104,10 @@ bool SudokuSolver::Solve(const std::string& sudokuString)
         std::cout << "Invalid Sudoku puzzle" << std::endl;
         return false;
     }
-    dlx.SetupSudoku(sudokuVector);
+    dlx.ResetStructure();
+
+    dlx.CoverExistingConstraints(sudokuVector);
+
     return dlx.Solve();
 }
 
@@ -94,11 +116,4 @@ std::vector<int> SudokuSolver::GetSolution()
     return dlx.GetSolution();
 }
 
-std::string SudokuSolver::PuzzleVectorToString(const std::vector<int>& puzzle)
-{
-    std::string result;
-	for (unsigned int i = 0; i < puzzle.size(); i++) {
-		result += std::to_string(puzzle[i]);
-	}
-	return result;
-}
+

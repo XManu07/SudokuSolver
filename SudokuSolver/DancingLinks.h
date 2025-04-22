@@ -14,7 +14,7 @@ private:
 	std::unordered_map<std::string, ColumnHeader*> columnHeaders;
 	std::vector<Node*> solution;
 	std::vector<Node*> allNodes;
-	bool solutionFound;\
+	bool solutionFound;
 
 
 public:
@@ -32,19 +32,29 @@ public:
 
 	void DeleteHeaders();
 
-	void DeleteStructure();
+	void RelinkHeaders();
+
+	void RelinkNodes();
+
+	void ResetStructure();
+
+	void DeleteSudokuStructure();
 
 	void AddColumn(const std::string& name);
 
 	Node* AddNode(Node* node, ColumnHeader* colHeader);
 
 	void SetupSudokuConstraints();
+
+	void CoverExistingConstraints(const std::vector<int>& puzzle);
 	
+	void AddSudokuRows();
+
 	void LinkNodesHorizontally(const std::vector<Node*>& nodes);
 
-	void AddSudokuRows(const std::vector<int>& puzzle);
+	void LinkNodeVertical(Node* node);
 
-	void SetupSudoku(const std::vector<int>& puzzle);
+	void SetupSudokuStructure();
 
 	bool Solve();
 

@@ -5,7 +5,7 @@ DancingLinks::DancingLinks() : solutionFound(false){
 }
 
 DancingLinks::~DancingLinks() {
-	DeleteStructure();
+	DeleteSudokuStructure();
 	delete header;
 }
 
@@ -68,10 +68,10 @@ bool DancingLinks::SearchForSolution(int depth)
 
 	CoverColumn(col);
 
-	for (Node* row = col->down; row != col; row = row->down) {
+	for (Node* row = col->down; row != col && row != nullptr; row = row->down) {
 		solution.push_back(row);
 
-		for (Node* cell = row->right; cell != row; cell = cell->right) {
+		for (Node* cell = row->right; cell != row && cell != nullptr; cell = cell->right) {
 			if (cell && cell->column) {
 				CoverColumn(static_cast<ColumnHeader*>(cell->column));
 			}
@@ -83,7 +83,7 @@ bool DancingLinks::SearchForSolution(int depth)
 
 		solution.pop_back();
 
-		for (Node* cell = row->left; cell != row; cell = cell->left) {
+		for (Node* cell = row->left; cell != row && cell != nullptr; cell = cell->left) {
 			if (cell && cell->column) {
 				UncoverColumn(static_cast<ColumnHeader*>(cell->column));
 			}
@@ -97,18 +97,68 @@ bool DancingLinks::SearchForSolution(int depth)
 
 void DancingLinks::DeleteHeaders()
 {
-	for (auto& pair : columnHeaders) {
-		delete pair.second;
+	for (auto& colHeader : columnHeaders) {
+		delete colHeader.second;
 	}
 }
 
-void DancingLinks::DeleteStructure() {
+void DancingLinks::RelinkHeaders()
+{
+	header->left = header;
+	header->right = header;
+
+	for (auto& colHeader : columnHeaders) {
+		colHeader.second->left = header->left;
+		colHeader.second->right = header;
+		header->left->right = colHeader.second;
+		header->left = colHeader.second;
+
+		colHeader.second->up = colHeader.second;
+		colHeader.second->down = colHeader.second;
+
+		colHeader.second->size = 9;
+	}
+
+}
+
+void DancingLinks::RelinkNodes()
+{
+
+	for (unsigned int i = 0; i < allNodes.size(); i+=4) {
+		std::vector<Node*> nodesToLink;
+
+		nodesToLink.push_back(allNodes[i]);
+		LinkNodeVertical(allNodes[i]);
+
+		nodesToLink.push_back(allNodes[i + 1]);
+		LinkNodeVertical(allNodes[i + 1]);
+
+		nodesToLink.push_back(allNodes[i + 2]);
+		LinkNodeVertical(allNodes[i + 2]);
+
+		nodesToLink.push_back(allNodes[i + 3]);
+		LinkNodeVertical(allNodes[i + 3]);
+
+		LinkNodesHorizontally(nodesToLink);
+	}
+}
+
+// reset each node link to its original state
+void DancingLinks::ResetStructure()
+{
+	RelinkHeaders();
+	RelinkNodes();
+	solution.clear();
+	solutionFound = false;
+}
+
+void DancingLinks::DeleteSudokuStructure() {
+	solution.clear();
 	for (Node* node : allNodes) {
 		delete node;
 	}
 	DeleteHeaders();
 	columnHeaders.clear();
-	solution.clear();
 	allNodes.clear();
 }
 
@@ -126,10 +176,7 @@ void DancingLinks::AddColumn(const std::string& name)
 }
 
 Node* DancingLinks::AddNode(Node* node, ColumnHeader* colHeader)
-{
-	if (!colHeader) 
-		return nullptr;
-
+{ 
 	node->column = colHeader;
 	node->up = colHeader->up;
 	node->down = colHeader;
@@ -172,94 +219,110 @@ void DancingLinks::SetupSudokuConstraints()
 			AddColumn("box_" + std::to_string(box) + "_" + std::to_string(digit));
 		}
 	}
+
+
 }
+
+void DancingLinks::CoverExistingConstraints(const std::vector<int>& puzzle)
+{
+	// Clear any existing solution first to avoid duplicates
+	solution.clear();
+
+	for (int r = 0; r < 9; r++) {
+		for (int c = 0; c < 9; c++) {
+			int digit = puzzle[r * 9 + c];
+			if (digit > 0) {  // If this is a given digit
+				// Get the column header for this cell
+				std::string cellKey = "cell_" + std::to_string(r) + "_" + std::to_string(c);
+				ColumnHeader* cellHeader = columnHeaders[cellKey];
+				bool foundNode = false;
+
+				// Find the node corresponding to this digit in this cell
+				for (Node* node = cellHeader->down; node != cellHeader; node = node->down) {
+					if (node->digit == digit) {
+						// Found the right node, add it to solution
+						solution.push_back(node);
+						foundNode = true;
+
+						// Cover this node's column (the cell constraint)
+						CoverColumn(static_cast<ColumnHeader*>(node->column));
+
+						// Cover all other constraints this node satisfies
+						for (Node* cell = node->right; cell != node; cell = cell->right) {
+							CoverColumn(static_cast<ColumnHeader*>(cell->column));
+						}
+
+						break;  // Found and processed this given digit
+					}
+				}
+			}
+		}
+	}
+}
+
 
 void DancingLinks::LinkNodesHorizontally(const std::vector<Node*>& nodes)
 {
 	unsigned int n = nodes.size();
 	for (unsigned int i = 0; i < n; i++) {
 
-		unsigned int leftIdx = i;
-		unsigned int rightIdx = i;
+		unsigned int leftIndex = (i - 1 + n) % n;
+		unsigned int rightIndex = (i + 1) % n;
 
-		// Find the next valid node to the left
-		do {
-			leftIdx = (leftIdx + n - 1) % n;
-		} while (leftIdx != i && !nodes[leftIdx]);
+		nodes[i]->left = nodes[leftIndex];
+		nodes[i]->right = nodes[rightIndex];
 
-		// Find the next valid node to the right
-		do {
-			rightIdx = (rightIdx + 1) % n;
-		} while (rightIdx != i && !nodes[rightIdx]);
-
-		// Link nodes if both left and right nodes are valid
-		if (nodes[leftIdx] && nodes[rightIdx]) {
-			nodes[i]->left = nodes[leftIdx];
-			nodes[i]->right = nodes[rightIdx];
-		}
 	}
 }
+void DancingLinks::LinkNodeVertical(Node* node)
+{
+	node->down = node->column;
+	node->up = node->column->up;
+	node->column->up->down = node;
+	node->column->up = node;
+}
 
-void DancingLinks::AddSudokuRows(const std::vector<int>& puzzle)
+
+void DancingLinks::AddSudokuRows()
 {
 	for (int row = 0; row < 9; row++) {
 		for (int col = 0; col < 9; col++) {
-			int cellIndex = row * 9 + col;
 			int boxIndex = (row / 3) * 3 + (col / 3);
 
-			std::vector<int> digits;
-			if (puzzle[cellIndex] != 0) {
-				digits.push_back(puzzle[cellIndex]);
-			}
-			else {
-				for (int digit = 1; digit <= 9; digit++) {
-					digits.push_back(digit);
-				}
-			}
-
-			for (int digit : digits) {
-				// Get the constraint column headers
+			for (int digit = 1; digit <= 9; digit++) {
 				std::string cellKey = "cell_" + std::to_string(row) + "_" + std::to_string(col);
 				std::string rowKey = "row_" + std::to_string(row) + "_" + std::to_string(digit);
 				std::string colKey = "col_" + std::to_string(col) + "_" + std::to_string(digit);
 				std::string boxKey = "box_" + std::to_string(boxIndex) + "_" + std::to_string(digit);
 
-				// Create nodes for each constraint this placement satisfies
 				std::vector<Node*> rowNodes;
 
-				// Cell constraint
-				Node* mainNode = new Node(row, col, digit);
-				rowNodes.push_back(AddNode(mainNode, columnHeaders[cellKey]));
+				Node* cellNode = new Node(row, col, digit);
+				rowNodes.push_back(AddNode(cellNode, columnHeaders[cellKey]));
 
-				// Row constraint
 				Node* rowNode = new Node(row, col, digit);
 				rowNodes.push_back(AddNode(rowNode, columnHeaders[rowKey]));
 
-				// Column constraint
 				Node* colNode = new Node(row, col, digit);
 				rowNodes.push_back(AddNode(colNode, columnHeaders[colKey]));
 
-				// Box constraint
 				Node* boxNode = new Node(row, col, digit);
 				rowNodes.push_back(AddNode(boxNode, columnHeaders[boxKey]));
 
-				// Link all nodes for this row
 				LinkNodesHorizontally(rowNodes);
 			}
 		}
 	}
 }
 
-void DancingLinks::SetupSudoku(const std::vector<int>& puzzle)
+void DancingLinks::SetupSudokuStructure()
 {
-	DeleteStructure();
 	SetupSudokuConstraints();
-	AddSudokuRows(puzzle);
+	AddSudokuRows();
 }
 
 bool DancingLinks::Solve()
 {
-	solution.clear();
 	solutionFound = false;
 	return SearchForSolution();
 }
