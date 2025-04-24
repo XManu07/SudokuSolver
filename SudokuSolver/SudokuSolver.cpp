@@ -100,10 +100,6 @@ bool SudokuSolver::Solve(const std::string& sudokuString)
 {
     std::vector<int> sudokuVector = PuzzleStringToVector(sudokuString);
 
-    if (!IsValidPuzzle(sudokuVector)) {
-        std::cout << "Invalid Sudoku puzzle" << std::endl;
-        return false;
-    }
     dlx.ResetStructure();
 
     dlx.CoverExistingConstraints(sudokuVector);

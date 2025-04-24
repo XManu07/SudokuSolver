@@ -9,7 +9,6 @@
 class DancingLinks
 {
 private:
-	// entry point for header
 	ColumnHeader* header;
 	std::unordered_map<std::string, ColumnHeader*> columnHeaders;
 	std::vector<Node*> solution;

@@ -143,7 +143,6 @@ void DancingLinks::RelinkNodes()
 	}
 }
 
-// reset each node link to its original state
 void DancingLinks::ResetStructure()
 {
 	RelinkHeaders();
@@ -225,34 +224,28 @@ void DancingLinks::SetupSudokuConstraints()
 
 void DancingLinks::CoverExistingConstraints(const std::vector<int>& puzzle)
 {
-	// Clear any existing solution first to avoid duplicates
 	solution.clear();
 
 	for (int r = 0; r < 9; r++) {
 		for (int c = 0; c < 9; c++) {
 			int digit = puzzle[r * 9 + c];
-			if (digit > 0) {  // If this is a given digit
-				// Get the column header for this cell
+			if (digit > 0) {
 				std::string cellKey = "cell_" + std::to_string(r) + "_" + std::to_string(c);
 				ColumnHeader* cellHeader = columnHeaders[cellKey];
 				bool foundNode = false;
 
-				// Find the node corresponding to this digit in this cell
 				for (Node* node = cellHeader->down; node != cellHeader; node = node->down) {
 					if (node->digit == digit) {
-						// Found the right node, add it to solution
 						solution.push_back(node);
 						foundNode = true;
 
-						// Cover this node's column (the cell constraint)
 						CoverColumn(static_cast<ColumnHeader*>(node->column));
 
-						// Cover all other constraints this node satisfies
 						for (Node* cell = node->right; cell != node; cell = cell->right) {
 							CoverColumn(static_cast<ColumnHeader*>(cell->column));
 						}
 
-						break;  // Found and processed this given digit
+						break;
 					}
 				}
 			}
